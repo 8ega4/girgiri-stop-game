@@ -1,5 +1,6 @@
 import "./style.css";
 import { track } from "./analytics";
+import { iconMarkup } from "./icons";
 import {
   createInitialState,
   makeRoundResult,
@@ -22,6 +23,7 @@ import type { GameMode, GameScreen, StoredStats } from "./types";
 const appRoot = document.querySelector<HTMLDivElement>("#app");
 if (!appRoot) throw new Error("App root was not found");
 const app: HTMLDivElement = appRoot;
+document.documentElement.style.setProperty("--hero-image", `url("${import.meta.env.BASE_URL}assets/hero-cat-cup.webp")`);
 
 const STORAGE_KEY = "girigiri-stop-game:v1";
 const DEFAULT_STATS: StoredStats = {
@@ -73,12 +75,16 @@ function shell(content: string, extraClass = ""): string {
   return `
     <main class="game-shell ${extraClass}">
       <button class="sound-toggle" type="button" data-action="sound" aria-label="音を${stats.soundEnabled ? "オフ" : "オン"}にする" aria-pressed="${stats.soundEnabled}">
-        ${stats.soundEnabled ? "🔊" : "🔇"}
+        ${iconMarkup(stats.soundEnabled ? "volume" : "volumeOff", "sound-toggle__icon")}
       </button>
       ${content}
       <div class="toast" role="status" aria-live="polite"></div>
     </main>
   `;
+}
+
+function pawIcon(className = "paw-icon"): string {
+  return `<img class="${className}" src="${import.meta.env.BASE_URL}favicon.svg" alt="" width="64" height="64" aria-hidden="true" />`;
 }
 
 function titleMarkup(compact = false): string {
@@ -97,24 +103,16 @@ function gameSceneLayers(animated = false, active = false): string {
     <img class="scene-layer scene-layer--cup${motionClass}" src="${import.meta.env.BASE_URL}assets/game-cup.png" alt="" width="500" height="460" aria-hidden="true" />
     <span class="scene-speech" aria-hidden="true">おっとっと…</span>
     <span class="edge-warning" aria-hidden="true"></span>
-    <span class="drop-warning" aria-hidden="true"><b>!</b><span>ここから<br />落ちる！</span></span>
-    ${active ? `<span class="cup-pulse" aria-hidden="true"></span><span class="motion-dots" aria-hidden="true">••••••➜</span>` : ""}
+    <span class="drop-warning" aria-hidden="true">${iconMarkup("alert", "drop-warning__icon")}<span>ここから<br />落ちる！</span></span>
+    ${active ? `<span class="cup-pulse" aria-hidden="true"></span><span class="motion-dots" aria-hidden="true"><span class="motion-dots__line"></span>${iconMarkup("arrowRight", "motion-dots__icon")}</span>` : ""}
   `;
 }
 
 function shareIcon(kind: "x" | "threads" | "line" | "native" | "copy"): string {
-  const icons = {
-    x: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4.7 3h4.6l3.7 5.2L17.6 3h2.7l-6.1 7.2L21 21h-4.6l-4.1-5.8L7.4 21H4.7l6.4-7.8L4.7 3Zm3.4 2 9.3 14h1.5L9.6 5H8.1Z"/></svg>`,
-    threads: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.8 11.1c-.3-5-3.1-8-7.4-8-4.7 0-8 3.6-8 8.9 0 5.5 3.3 8.9 8.4 8.9 4 0 7-2.2 7-5.4 0-2.7-2.1-4.4-5.3-4.4-3.4 0-5.6 1.6-5.6 3.8 0 1.8 1.5 3 3.4 3 2.8 0 4.4-2 4.4-5.3 0-3-1.5-4.7-4.4-4.7-1.4 0-2.6.4-3.5 1.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    line: `<svg viewBox="0 0 28 24" aria-hidden="true"><path fill="currentColor" d="M14 2C7.4 2 2 6.2 2 11.4c0 4.7 4.2 8.5 9.8 9.3.5.1 1.1.4 1.2.8.1.3.1.8 0 1.1l-.2 1.3c-.1.4-.3 1.5 1.3.8 1.6-.7 8.7-5.1 11.8-8.7 1.4-1.6 2.1-3.1 2.1-4.6C28 6.2 21.7 2 14 2Z"/><text x="14" y="14.7" text-anchor="middle" fill="#06c755" font-size="7.2" font-weight="900" font-family="Arial, sans-serif">LINE</text></svg>`,
-    native: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="19" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8.7 10.7 6.6-4.1m-6.6 6.7 6.6 4.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-    copy: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5 14.5 9m-7.7 8.2-1 1a3.4 3.4 0 0 1-4.8-4.8l3.5-3.5a3.4 3.4 0 0 1 4.8 0m5.4 4.2a3.4 3.4 0 0 0 4.8 0l3.5-3.5a3.4 3.4 0 0 0-4.8-4.8l-1 1a3.4 3.4 0 0 0-1 2.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  };
-  return `<span class="share-icon share-icon--${kind}">${icons[kind]}</span>`;
+  return iconMarkup(kind === "native" ? "share" : kind, `share-icon share-icon--${kind}`);
 }
 
 function startMarkup(): string {
-  const hasStats = stats.playCount > 0;
   return shell(`
     <section class="screen screen--start" aria-labelledby="start-heading">
       <h1 id="start-heading" class="sr-only">ギリギリで止めろ！</h1>
@@ -124,18 +122,19 @@ function startMarkup(): string {
 
       <div class="hero-visual">
         <img src="${import.meta.env.BASE_URL}assets/hero-cat-cup.webp" alt="猫が机の端へコップを押している" width="941" height="640" />
-        <span class="hero-visual__edge" aria-hidden="true"></span>
-        <span class="hero-visual__spark hero-visual__spark--one" aria-hidden="true">✦</span>
-        <span class="hero-visual__spark hero-visual__spark--two" aria-hidden="true">★</span>
       </div>
 
       <div class="start-actions">
         <button class="big-button big-button--red" type="button" data-action="start" data-mode="challenge">
-          <span>いますぐ遊ぶ</span><span class="paw-mini" aria-hidden="true">🐾</span>
+          <span>いますぐ遊ぶ</span>${pawIcon("paw-mini")}
         </button>
       </div>
-      ${hasStats ? `<div class="personal-stats" aria-label="あなたの記録"><span>BEST <strong>${stats.highScore}</strong></span><span>PLAY <strong>${stats.playCount}</strong></span></div>` : ""}
-      <p class="easy-note"><span aria-hidden="true">🐾</span> タップだけの<strong>かんたん操作</strong></p>
+      <div class="personal-stats" aria-label="あなたの記録">
+        <span>${iconMarkup("trophy", "personal-stats__icon")}<small>BEST</small><strong>${stats.highScore}</strong></span>
+        <span class="personal-stats__divider" aria-hidden="true"></span>
+        <span><small>PLAY</small><strong>${stats.playCount}</strong></span>
+      </div>
+      <p class="easy-note">${iconMarkup("sparkles", "easy-note__icon")}<strong>5問・500点満点</strong><span aria-hidden="true">／</span>タップだけ</p>
     </section>
   `, "game-shell--start");
 }
@@ -145,7 +144,15 @@ function playHeader(): string {
   return `
     ${titleMarkup(true)}
     <div class="play-status" aria-label="ゲーム進行状況">
-      <div class="status-card"><span aria-hidden="true">🚩</span><strong>${state.currentRound}</strong><span class="status-card__muted"> / ${totalRounds}</span></div>
+      <div class="status-card status-card--round">
+        ${iconMarkup("flag", "status-card__flag")}
+        <div class="status-card__round-detail">
+          <span><strong>${state.currentRound}</strong><span class="status-card__muted"> / ${totalRounds}</span></span>
+          <span class="round-progress" aria-hidden="true">
+            ${Array.from({ length: totalRounds }, (_, index) => `<i class="${index + 1 < state.currentRound ? "is-done" : index + 1 === state.currentRound ? "is-current" : ""}"></i>`).join("")}
+          </span>
+        </div>
+      </div>
       <div class="status-divider" aria-hidden="true"></div>
       <div class="status-card status-card--score"><small>SCORE</small><strong>${state.totalScore}</strong></div>
     </div>
@@ -161,6 +168,7 @@ function roundIntroMarkup(): string {
         ${gameSceneLayers(false)}
       </div>
       <div class="round-intro-card">
+        ${iconMarkup("sparkles", "round-intro-card__icon")}
         <span>${roundLabel(state.currentRound, totalRounds)}</span>
         <small>${state.currentRound === totalRounds ? "最後の一発、攻めろ！" : "タイミングを見極めろ"}</small>
       </div>
@@ -213,7 +221,7 @@ function playingMarkup(): string {
         </div>
       </button>
       ${gaugeMarkup()}
-      <p class="tap-hint"><span aria-hidden="true">✦</span> タップで止める <span aria-hidden="true">✦</span></p>
+      <p class="tap-hint">${iconMarkup("sparkles", "tap-hint__icon")}どこをタップしても止まる${iconMarkup("sparkles", "tap-hint__icon")}</p>
       <button class="stop-button" type="button" data-action="stop"><span>STOP!</span></button>
     </section>
   `, "game-shell--playing");
@@ -227,6 +235,8 @@ function roundResultMarkup(): string {
   const result = state.results.at(-1);
   if (!result) return playingMarkup();
   const success = result.score >= 80;
+  const totalRounds = totalRoundsForMode(state.mode);
+  const nextLabel = state.currentRound < totalRounds ? `次は ROUND ${state.currentRound + 1}` : "結果発表へ";
   return shell(`
     <section class="screen screen--playing screen--round-result ${result.zone === "out" ? "is-out" : ""}" aria-live="assertive">
       ${playHeader()}
@@ -238,6 +248,7 @@ function roundResultMarkup(): string {
         <strong>${result.errorCm.toFixed(1)}<em>cm</em></strong>
         <div class="mini-result__score">${result.score}<span>点</span></div>
         <p>${result.title}</p>
+        <span class="mini-result__next">${nextLabel}</span>
       </div>
       ${success ? confettiMarkup() : ""}
     </section>
@@ -258,25 +269,25 @@ function finalResultMarkup(): string {
   return shell(`
     <section class="screen screen--result" aria-labelledby="result-heading">
       ${titleMarkup(true)}
-      <h1 id="result-heading" class="result-heading" data-text="結果発表" aria-label="結果発表"><span>結果発表</span></h1>
-      <p class="mode-ribbon"><span aria-hidden="true">🐾</span> ${modeLabel} <span aria-hidden="true">🐾</span></p>
+      <h1 id="result-heading" class="result-heading" data-text="結果発表" aria-label="結果発表" tabindex="-1"><span>結果発表</span></h1>
+      <p class="mode-ribbon">${pawIcon("mode-ribbon__paw")}<span>${modeLabel}</span>${pawIcon("mode-ribbon__paw")}</p>
 
       <article class="result-card">
         <div class="result-card__top">
           <img src="${import.meta.env.BASE_URL}assets/result-cat-cup.webp" alt="猫と机の端のコップ" width="482" height="535" />
           <div class="result-metrics">
-            <div><span>ベスト誤差</span><strong>${result.best.errorCm.toFixed(1)}<em>cm</em></strong></div>
+            <div><span>ベスト誤差 <small>R${bestIndex + 1}</small></span><strong>${result.best.errorCm.toFixed(1)}<em>cm</em></strong></div>
             <div class="result-metrics__edge"><span>ギリギリ度</span><strong>${result.best.score}<em>点</em></strong></div>
-            <p><small>称号 GET!</small><strong>${resultTitle}</strong></p>
+            <p><small>${iconMarkup("trophy", "result-title__icon")}称号 GET!</small><strong>${resultTitle}</strong></p>
           </div>
         </div>
-        <div class="total-score"><span>TOTAL</span><strong>${state.totalScore}</strong><em>点</em></div>
+        <div class="total-score">${iconMarkup("sparkles", "total-score__spark")}<span>TOTAL</span><strong>${state.totalScore}</strong><em>点</em>${iconMarkup("sparkles", "total-score__spark")}</div>
         <div class="round-breakdown" style="--round-count:${state.results.length}" aria-label="${state.results.length}問のスコア内訳">
           ${state.results.map((item, index) => `<span class="${index === bestIndex ? "is-best" : ""}"><small>R${index + 1}</small><strong>${item.score}</strong></span>`).join("")}
         </div>
       </article>
 
-      <p class="share-lead">この結果をみんなに<strong>シェア</strong>しよう！</p>
+      <p class="share-lead">${iconMarkup("sparkles", "share-lead__icon")}この結果をみんなに<strong>シェア</strong>しよう！${iconMarkup("sparkles", "share-lead__icon")}</p>
       <div class="share-grid">
         <button class="share-button share-button--x" type="button" data-action="share-x">${shareIcon("x")}<span>Xで共有</span></button>
         <button class="share-button share-button--threads" type="button" data-action="share-threads">${shareIcon("threads")}<span>Threadsで共有</span></button>
@@ -284,7 +295,7 @@ function finalResultMarkup(): string {
         <button class="share-button share-button--native share-button--utility" type="button" data-action="share-native">${shareIcon("native")}<span>シェア先を選ぶ</span></button>
         <button class="share-button share-button--copy share-button--utility" type="button" data-action="copy-link">${shareIcon("copy")}<span>リンクをコピー</span></button>
       </div>
-      <button class="retry-button" type="button" data-action="retry"><span aria-hidden="true">↻</span> もう一回</button>
+      <button class="retry-button" type="button" data-action="retry">${iconMarkup("refresh", "retry-button__icon")}<span>もう一回あそぶ</span></button>
       ${(state.mode === "quick" ? state.totalScore >= 95 : state.totalScore >= 450) ? confettiMarkup(28) : ""}
     </section>
   `, "game-shell--result");
@@ -398,6 +409,9 @@ function completeGame(): void {
   saveStats();
   setScreen("finalResult");
   render();
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>("#result-heading")?.focus({ preventScroll: true });
+  });
   playSound("complete");
   track("game_complete", { mode: state.mode, score: state.totalScore, best_round: bestRound });
 }
