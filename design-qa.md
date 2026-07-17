@@ -63,6 +63,12 @@
   - Fix: added `次は ROUND 2` and `結果発表へ` cues to the round-result card.
   - Post-fix evidence: `02b-round-result.png`.
 
+### Pass 3
+
+- [P2] The separated gameplay background still had a brief entrance-scale animation.
+  - Fix: removed animation from `.scene-layer--background`; only the independent cat and cup layers retain motion.
+  - Post-fix evidence: browser-rendered style check reports `none` for the background, `cat-bob` for the cat, and `cup-wobble` for the cup.
+
 ## Primary Interactions and Console
 
 - Tested start, manual stop, next-round cue, automatic five-round completion, result focus, retry, and all result controls' rendered states.
