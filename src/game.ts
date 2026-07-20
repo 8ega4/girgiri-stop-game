@@ -5,7 +5,14 @@ export const TARGET_POSITION = 0.78;
 export const EDGE_START = 0.62;
 export const OUT_START = 0.84;
 
-const ROUND_DURATIONS = [4_200, 3_200, 2_700, 2_400, 2_050] as const;
+const ROUND_DURATIONS = [4_200, 2_800, 2_400, 2_100, 1_800] as const;
+const ROUND_CUES = [
+  "まずは一定スピード",
+  "ここから一気に1.5倍！",
+  "後半ほど速くなる",
+  "速度の波を見切れ",
+  "緩急MAX、最後の一発！",
+] as const;
 
 export function createInitialState(): GameState {
   return {
@@ -69,6 +76,14 @@ export function positionAt(elapsedMs: number, round: number, seed = 1): number {
   }
 
   return Math.min(1, Math.max(0, position));
+}
+
+export function roundDifficulty(round: number): { speedMultiplier: number; cue: string } {
+  const safeRound = Math.min(TOTAL_ROUNDS, Math.max(1, Math.round(round)));
+  return {
+    speedMultiplier: Math.round((ROUND_DURATIONS[0] / ROUND_DURATIONS[safeRound - 1]) * 10) / 10,
+    cue: ROUND_CUES[safeRound - 1],
+  };
 }
 
 export function zoneForPosition(position: number): RoundResult["zone"] {

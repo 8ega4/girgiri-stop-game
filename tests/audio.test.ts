@@ -3,9 +3,10 @@ import { bgmTempo, midiToFrequency } from "../src/audio";
 
 describe("BGM", () => {
   it("raises the tempo as rounds get harder", () => {
-    expect(bgmTempo("play", 1)).toBe(126);
-    expect(bgmTempo("play", 3)).toBe(142);
-    expect(bgmTempo("play", 5)).toBe(158);
+    expect(bgmTempo("play", 1)).toBe(122);
+    expect(bgmTempo("play", 2)).toBe(142);
+    expect(bgmTempo("play", 3)).toBe(150);
+    expect(bgmTempo("play", 5)).toBe(168);
   });
 
   it("uses a calmer fixed tempo for the result scene", () => {

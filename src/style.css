@@ -707,12 +707,29 @@ body[data-screen="roundResult"] { overflow: hidden; overscroll-behavior: none; }
   box-shadow: 0 10px 0 rgba(3,28,73,.35), 0 20px 48px rgba(0,0,0,.35);
   text-align: center;
   transform: translate(-50%, -50%);
-  animation: round-pop 760ms ease both;
+  animation: round-pop 900ms ease both;
 }
 
 .round-intro-card__icon { display: grid; width: 25px; height: 25px; margin: 0 auto 8px; color: #ffe13c; }
 .round-intro-card__icon svg { width: 100%; height: 100%; stroke-width: 2.5; }
-.round-intro-card span { display: block; color: #ffe13c; font-size: clamp(37px, 11vw, 51px); font-weight: 900; line-height: 1; }
+.round-intro-card__pace {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 5px 12px 4px;
+  border: 2px solid rgba(255,255,255,.75);
+  border-radius: 999px;
+  color: #fff;
+  background: #ed2d42;
+  box-shadow: 0 3px 0 rgba(0,0,0,.2);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .08em;
+}
+.round-intro-card__pace strong { color: #ffe13c; font-size: 20px; letter-spacing: 0; }
+.round-intro-card__round { display: block; color: #ffe13c; font-size: clamp(37px, 11vw, 51px); font-weight: 900; line-height: 1; }
 .round-intro-card small { display: block; margin-top: 10px; font-weight: 800; }
 
 .screen--round-result { position: relative; }

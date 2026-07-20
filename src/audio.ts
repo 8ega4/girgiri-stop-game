@@ -2,7 +2,7 @@ export type BgmScene = "play" | "result";
 export type SoundEffect = "start" | "stop" | "high" | "fail" | "complete";
 
 const SILENCE = 0.0001;
-const PLAY_TEMPOS = [126, 134, 142, 150, 158] as const;
+const PLAY_TEMPOS = [122, 142, 150, 158, 168] as const;
 
 const PLAY_MELODY: ReadonlyArray<number | null> = [
   72, null, 76, null, 79, 76, 74, null,

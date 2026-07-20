@@ -5,6 +5,7 @@ import {
   dailySeed,
   makeRoundResult,
   positionAt,
+  roundDifficulty,
   scoreForPosition,
   titleForScore,
   totalRoundsForMode,
@@ -45,6 +46,15 @@ describe("movement", () => {
   it("uses distinct patterns across the five rounds", () => {
     const positions = Array.from({ length: 5 }, (_, index) => positionAt(2_000, index + 1, 42));
     expect(new Set(positions.map((value) => value.toFixed(3))).size).toBe(5);
+  });
+
+  it("makes round two clearly faster than the opening round", () => {
+    expect(roundDifficulty(1)).toEqual({ speedMultiplier: 1, cue: "まずは一定スピード" });
+    expect(roundDifficulty(2)).toEqual({ speedMultiplier: 1.5, cue: "ここから一気に1.5倍！" });
+
+    for (const seed of [1, 42, 123_456, 987_654_321]) {
+      expect(positionAt(2_000, 2, seed) - positionAt(2_000, 1, seed)).toBeGreaterThan(0.15);
+    }
   });
 
   it("keeps the harder pace short even in the opening round", () => {

@@ -7,6 +7,7 @@ import {
   makeRoundResult,
   overallTitle,
   positionAt,
+  roundDifficulty,
   roundLabel,
   seedForMode,
   totalRoundsForMode,
@@ -177,6 +178,7 @@ function playHeader(): string {
 
 function roundIntroMarkup(): string {
   const totalRounds = totalRoundsForMode(state.mode);
+  const difficulty = roundDifficulty(state.currentRound);
   return shell(`
     <section class="screen screen--playing screen--intro" aria-live="assertive">
       ${playHeader()}
@@ -185,8 +187,9 @@ function roundIntroMarkup(): string {
       </div>
       <div class="round-intro-card">
         ${iconMarkup("sparkles", "round-intro-card__icon")}
-        <span>${roundLabel(state.currentRound, totalRounds)}</span>
-        <small>${state.currentRound === totalRounds ? "最後の一発、攻めろ！" : "タイミングを見極めろ"}</small>
+        <span class="round-intro-card__pace">SPEED <strong>×${difficulty.speedMultiplier.toFixed(1)}</strong></span>
+        <strong class="round-intro-card__round">${roundLabel(state.currentRound, totalRounds)}</strong>
+        <small>${difficulty.cue}</small>
       </div>
     </section>
   `, "game-shell--playing");
@@ -369,7 +372,7 @@ function beginRound(): void {
     render();
     roundStartTime = performance.now();
     frameId = requestAnimationFrame(animate);
-  }, 760);
+  }, 900);
 }
 
 function animate(now: number): void {
