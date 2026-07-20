@@ -1,6 +1,7 @@
 import type { GameMode, GameState, RoundResult } from "./types";
 
 export const TOTAL_ROUNDS = 5;
+export const MOVEMENT_PATTERN_COUNT = 100;
 export const TARGET_POSITION = 0.78;
 export const EDGE_START = 0.62;
 export const OUT_START = 0.84;
@@ -13,6 +14,17 @@ const ROUND_CUES = [
   "速度の波を見切れ",
   "緩急MAX、最後の一発！",
 ] as const;
+const ROUND_PATTERN_INTENSITY = [0.25, 0.35, 0.65, 0.85, 1] as const;
+const PATTERN_STEPS = [7, 9, 11, 13, 17, 19, 21, 23, 27, 29] as const;
+
+export const MOVEMENT_PATTERNS = Object.freeze(
+  Array.from({ length: MOVEMENT_PATTERN_COUNT }, (_, id) => ({
+    id,
+    family: id % 5,
+    variant: Math.floor(id / 5),
+    durationScale: 0.96 + ((id * 7) % 9) * 0.01,
+  })),
+);
 
 export function createInitialState(): GameState {
   return {
@@ -50,32 +62,91 @@ function seededVariation(seed: number, round: number): number {
   return 0.94 + (value - Math.floor(value)) * 0.12;
 }
 
-export function positionAt(elapsedMs: number, round: number, seed = 1): number {
+function mixSeed(seed: number): number {
+  let value = Math.trunc(seed) | 0;
+  value ^= value >>> 16;
+  value = Math.imul(value, 0x7feb352d);
+  value ^= value >>> 15;
+  value = Math.imul(value, 0x846ca68b);
+  value ^= value >>> 16;
+  return value >>> 0;
+}
+
+export function movementPatternIndex(seed: number, round: number): number {
   const safeRound = Math.min(TOTAL_ROUNDS, Math.max(1, Math.round(round)));
-  const base = elapsedMs / (ROUND_DURATIONS[safeRound - 1] * seededVariation(seed, safeRound));
+  const mixed = mixSeed(seed);
+  const start = mixed % MOVEMENT_PATTERN_COUNT;
+  const step = PATTERN_STEPS[(mixed >>> 8) % PATTERN_STEPS.length];
+  return (start + (safeRound - 1) * step) % MOVEMENT_PATTERN_COUNT;
+}
+
+function multiSpeedProgress(progress: number, variant: number): number {
+  const firstBreak = 0.3;
+  const secondBreak = 0.68;
+  const firstSpeed = 0.68 + (variant % 4) * 0.12;
+  const middleSpeed = 0.65 + (Math.floor(variant / 4) % 5) * 0.12;
+  const finalSpeed = 0.76 + ((variant * 7) % 6) * 0.09;
+  const firstDistance = firstBreak * firstSpeed;
+  const middleDistance = (secondBreak - firstBreak) * middleSpeed;
+  const totalDistance = firstDistance + middleDistance + (1 - secondBreak) * finalSpeed;
+
+  if (progress < firstBreak) return (progress * firstSpeed) / totalDistance;
+  if (progress < secondBreak) {
+    return (firstDistance + (progress - firstBreak) * middleSpeed) / totalDistance;
+  }
+  return (firstDistance + middleDistance + (progress - secondBreak) * finalSpeed) / totalDistance;
+}
+
+export function movementPatternProgress(progress: number, patternIndex: number, round: number): number {
+  const value = Math.min(1, Math.max(0, progress));
+  const safePatternIndex = ((Math.round(patternIndex) % MOVEMENT_PATTERN_COUNT) + MOVEMENT_PATTERN_COUNT) % MOVEMENT_PATTERN_COUNT;
+  const safeRound = Math.min(TOTAL_ROUNDS, Math.max(1, Math.round(round)));
+  const { family, variant } = MOVEMENT_PATTERNS[safePatternIndex];
+  const intensity = ROUND_PATTERN_INTENSITY[safeRound - 1];
   let position: number;
 
-  switch (safeRound) {
-    case 1:
-    case 2:
-      position = base;
+  switch (family) {
+    case 0: {
+      const frequency = 1 + (variant % 4);
+      const phase = ((variant * 0.61803398875) % 1) * Math.PI * 2;
+      const amplitude = (0.12 + (variant % 5) * 0.025) * intensity;
+      position = value + (amplitude * (Math.cos(phase) - Math.cos(Math.PI * 2 * frequency * value + phase))) / (Math.PI * 2 * frequency);
       break;
-    case 3:
-      position = Math.pow(Math.max(0, base), 1.62);
+    }
+    case 1: {
+      const exponent = 1 + (0.1 + variant * 0.009) * intensity;
+      position = value ** exponent;
       break;
-    case 4:
-      position = base + Math.sin(base * Math.PI * 8) * 0.034;
+    }
+    case 2: {
+      const exponent = 1 + (0.1 + variant * 0.009) * intensity;
+      position = 1 - (1 - value) ** exponent;
       break;
-    case 5:
-      if (base < 0.42) position = base * 1.12;
-      else if (base < 0.7) position = 0.4704 + (base - 0.42) * 0.28;
-      else position = 0.5488 + (base - 0.7) * 1.504;
+    }
+    case 3: {
+      const direction = variant % 2 === 0 ? 1 : -1;
+      const amplitude = (0.07 + variant * 0.004) * intensity;
+      position = value + direction * amplitude * Math.sin(Math.PI * value);
       break;
+    }
+    case 4: {
+      const stepped = multiSpeedProgress(value, variant);
+      position = value + (stepped - value) * intensity;
+      break;
+    }
     default:
-      position = base;
+      position = value;
   }
 
   return Math.min(1, Math.max(0, position));
+}
+
+export function positionAt(elapsedMs: number, round: number, seed = 1): number {
+  const safeRound = Math.min(TOTAL_ROUNDS, Math.max(1, Math.round(round)));
+  const patternIndex = movementPatternIndex(seed, safeRound);
+  const pattern = MOVEMENT_PATTERNS[patternIndex];
+  const base = elapsedMs / (ROUND_DURATIONS[safeRound - 1] * seededVariation(seed, safeRound) * pattern.durationScale);
+  return movementPatternProgress(base, patternIndex, safeRound);
 }
 
 export function roundDifficulty(round: number): { speedMultiplier: number; cue: string } {

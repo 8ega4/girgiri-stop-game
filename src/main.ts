@@ -5,6 +5,7 @@ import { iconMarkup } from "./icons";
 import {
   createInitialState,
   makeRoundResult,
+  movementPatternIndex,
   overallTitle,
   positionAt,
   roundDifficulty,
@@ -179,6 +180,7 @@ function playHeader(): string {
 function roundIntroMarkup(): string {
   const totalRounds = totalRoundsForMode(state.mode);
   const difficulty = roundDifficulty(state.currentRound);
+  const patternNumber = movementPatternIndex(state.seed, state.currentRound) + 1;
   return shell(`
     <section class="screen screen--playing screen--intro" aria-live="assertive">
       ${playHeader()}
@@ -190,6 +192,7 @@ function roundIntroMarkup(): string {
         <span class="round-intro-card__pace">SPEED <strong>×${difficulty.speedMultiplier.toFixed(1)}</strong></span>
         <strong class="round-intro-card__round">${roundLabel(state.currentRound, totalRounds)}</strong>
         <small>${difficulty.cue}</small>
+        <span class="round-intro-card__pattern">PATTERN ${String(patternNumber).padStart(3, "0")} / 100</span>
       </div>
     </section>
   `, "game-shell--playing");
@@ -365,7 +368,11 @@ function beginRound(): void {
   setScreen("roundIntro");
   render();
   playSound("start");
-  track("round_start", { round: state.currentRound, mode: state.mode });
+  track("round_start", {
+    round: state.currentRound,
+    mode: state.mode,
+    pattern: movementPatternIndex(state.seed, state.currentRound) + 1,
+  });
   introTimer = window.setTimeout(() => {
     setScreen("playing");
     state.inputLocked = false;

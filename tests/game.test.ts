@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  MOVEMENT_PATTERN_COUNT,
+  MOVEMENT_PATTERNS,
   OUT_START,
   TARGET_POSITION,
   dailySeed,
   makeRoundResult,
+  movementPatternIndex,
+  movementPatternProgress,
   positionAt,
   roundDifficulty,
   scoreForPosition,
@@ -36,6 +40,39 @@ describe("scoring", () => {
 });
 
 describe("movement", () => {
+  it("defines 100 distinct movement patterns", () => {
+    expect(MOVEMENT_PATTERN_COUNT).toBe(100);
+    expect(MOVEMENT_PATTERNS).toHaveLength(100);
+
+    const fingerprints = MOVEMENT_PATTERNS.map((pattern) =>
+      [0.17, 0.39, 0.61, 0.79]
+        .map((progress) => movementPatternProgress(progress, pattern.id, 5).toFixed(6))
+        .join(":"),
+    );
+    expect(new Set(fingerprints).size).toBe(100);
+  });
+
+  it("selects five non-repeating random patterns for each game", () => {
+    for (const seed of [1, 42, 123_456, 987_654_321]) {
+      const selected = Array.from({ length: 5 }, (_, index) => movementPatternIndex(seed, index + 1));
+      expect(new Set(selected).size).toBe(5);
+      expect(selected.every((pattern) => pattern >= 0 && pattern < MOVEMENT_PATTERN_COUNT)).toBe(true);
+    }
+  });
+
+  it("keeps all 100 patterns monotonic", () => {
+    for (const pattern of MOVEMENT_PATTERNS) {
+      for (let round = 1; round <= 5; round += 1) {
+        let previous = 0;
+        for (let step = 0; step <= 100; step += 1) {
+          const position = movementPatternProgress(step / 100, pattern.id, round);
+          expect(position).toBeGreaterThanOrEqual(previous - Number.EPSILON);
+          previous = position;
+        }
+      }
+    }
+  });
+
   it("starts at zero and reaches the end without exceeding normalized bounds", () => {
     for (let round = 1; round <= 5; round += 1) {
       expect(positionAt(0, round, 42)).toBe(0);
