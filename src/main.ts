@@ -9,6 +9,7 @@ import {
   movementPatternIndex,
   overallTitle,
   positionAt,
+  ROUND_INTRO_DURATION_MS,
   roundDifficulty,
   roundLabel,
   seedForMode,
@@ -385,7 +386,7 @@ function beginRound(): void {
     render();
     roundStartTime = performance.now();
     frameId = requestAnimationFrame(animate);
-  }, 900);
+  }, ROUND_INTRO_DURATION_MS);
 }
 
 function animate(now: number): void {

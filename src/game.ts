@@ -2,6 +2,7 @@ import type { GameMode, GameState, RoundResult } from "./types";
 
 export const TOTAL_ROUNDS = 5;
 export const MOVEMENT_PATTERN_COUNT = 100;
+export const ROUND_INTRO_DURATION_MS = 2_200;
 export const TARGET_POSITION = 0.78;
 export const EDGE_START = 0.62;
 export const OUT_START = 0.84;

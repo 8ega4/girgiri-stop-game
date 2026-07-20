@@ -3,6 +3,7 @@ import {
   MOVEMENT_PATTERN_COUNT,
   MOVEMENT_PATTERNS,
   OUT_START,
+  ROUND_INTRO_DURATION_MS,
   TARGET_POSITION,
   dailySeed,
   makeRoundResult,
@@ -171,6 +172,10 @@ describe("movement", () => {
 });
 
 describe("daily mode and titles", () => {
+  it("keeps each round intro readable before play starts", () => {
+    expect(ROUND_INTRO_DURATION_MS).toBeGreaterThanOrEqual(2_000);
+  });
+
   it("assigns one round to quick play and five rounds to both challenges", () => {
     expect(totalRoundsForMode("quick")).toBe(1);
     expect(totalRoundsForMode("challenge")).toBe(5);

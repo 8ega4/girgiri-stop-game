@@ -707,7 +707,7 @@ body[data-screen="roundResult"] { overflow: hidden; overscroll-behavior: none; }
   box-shadow: 0 10px 0 rgba(3,28,73,.35), 0 20px 48px rgba(0,0,0,.35);
   text-align: center;
   transform: translate(-50%, -50%);
-  animation: round-pop 900ms ease both;
+  animation: round-pop 520ms cubic-bezier(.2, .9, .28, 1.18) both;
 }
 
 .round-intro-card__icon { display: grid; width: 25px; height: 25px; margin: 0 auto 8px; color: #ffe13c; }
@@ -1021,7 +1021,11 @@ body[data-screen="roundResult"] { overflow: hidden; overscroll-behavior: none; }
 @keyframes pulse { 50% { opacity: .4; } }
 @keyframes cup-pulse { from { opacity: .85; transform: scale(.72); } to { opacity: 0; transform: scale(1.2); } }
 @keyframes arrow-flow { 50% { transform: translateX(5px); opacity: .7; } }
-@keyframes round-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.65); } 35% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.94); } }
+@keyframes round-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.72); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 @keyframes result-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.65); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes success-flash { 35% { filter: brightness(1.3); transform: scale(1.015); } }
 @keyframes miss-cup-fall {
