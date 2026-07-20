@@ -739,6 +739,13 @@ body[data-screen="roundResult"] { overflow: hidden; overscroll-behavior: none; }
   font-weight: 900;
   letter-spacing: .14em;
 }
+.round-intro-card__pattern strong {
+  display: block;
+  margin-top: 4px;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: .06em;
+}
 
 .screen--round-result { position: relative; }
 .screen--round-result .play-status,

@@ -40,6 +40,28 @@ describe("scoring", () => {
 });
 
 describe("movement", () => {
+  function progressAtPosition(patternId: number, round: number, target: number): number {
+    let lower = 0;
+    let upper = 1;
+    for (let step = 0; step < 24; step += 1) {
+      const midpoint = (lower + upper) / 2;
+      if (movementPatternProgress(midpoint, patternId, round) >= target) upper = midpoint;
+      else lower = midpoint;
+    }
+    return upper;
+  }
+
+  function completionTime(round: number, seed: number): number {
+    let lower = 0;
+    let upper = 6_000;
+    for (let step = 0; step < 24; step += 1) {
+      const midpoint = (lower + upper) / 2;
+      if (positionAt(midpoint, round, seed) >= 1) upper = midpoint;
+      else lower = midpoint;
+    }
+    return upper;
+  }
+
   it("defines 100 distinct movement patterns", () => {
     expect(MOVEMENT_PATTERN_COUNT).toBe(100);
     expect(MOVEMENT_PATTERNS).toHaveLength(100);
@@ -52,11 +74,50 @@ describe("movement", () => {
     expect(new Set(fingerprints).size).toBe(100);
   });
 
-  it("selects five non-repeating random patterns for each game", () => {
+  it("selects five non-repeating pattern families for each game", () => {
     for (const seed of [1, 42, 123_456, 987_654_321]) {
       const selected = Array.from({ length: 5 }, (_, index) => movementPatternIndex(seed, index + 1));
       expect(new Set(selected).size).toBe(5);
+      expect(new Set(selected.map((pattern) => MOVEMENT_PATTERNS[pattern].family)).size).toBe(5);
       expect(selected.every((pattern) => pattern >= 0 && pattern < MOVEMENT_PATTERN_COUNT)).toBe(true);
+    }
+  });
+
+  it("keeps irregular families visibly different from steady movement", () => {
+    for (const pattern of MOVEMENT_PATTERNS.filter(({ family }) => family >= 1)) {
+      const increments = Array.from({ length: 40 }, (_, index) =>
+        movementPatternProgress((index + 1) / 40, pattern.id, 1)
+        - movementPatternProgress(index / 40, pattern.id, 1),
+      );
+      expect(Math.max(...increments) / Math.min(...increments)).toBeGreaterThan(1.8);
+    }
+  });
+
+  it("gives each named family ten structurally distinct timing variants", () => {
+    for (let family = 0; family < 10; family += 1) {
+      const variants = MOVEMENT_PATTERNS.filter((pattern) => pattern.family === family);
+      for (let first = 0; first < variants.length; first += 1) {
+        for (let second = first + 1; second < variants.length; second += 1) {
+          const largestDifference = Math.max(
+            ...Array.from({ length: 39 }, (_, index) => {
+              const progress = (index + 1) / 40;
+              return Math.abs(
+                movementPatternProgress(progress, variants[first].id, 5)
+                - movementPatternProgress(progress, variants[second].id, 5),
+              );
+            }),
+          );
+          expect(largestDifference * 300).toBeGreaterThan(1.25);
+        }
+      }
+    }
+  });
+
+  it("keeps the target approach difficult but humanly stoppable", () => {
+    for (const pattern of MOVEMENT_PATTERNS) {
+      const approachWindow = progressAtPosition(pattern.id, 5, 0.84)
+        - progressAtPosition(pattern.id, 5, 0.72);
+      expect(approachWindow).toBeGreaterThanOrEqual(0.077);
     }
   });
 
@@ -86,11 +147,11 @@ describe("movement", () => {
   });
 
   it("makes round two clearly faster than the opening round", () => {
-    expect(roundDifficulty(1)).toEqual({ speedMultiplier: 1, cue: "まずは一定スピード" });
+    expect(roundDifficulty(1)).toEqual({ speedMultiplier: 1, cue: "まずは動きのクセを見切れ" });
     expect(roundDifficulty(2)).toEqual({ speedMultiplier: 1.5, cue: "ここから一気に1.5倍！" });
 
     for (const seed of [1, 42, 123_456, 987_654_321]) {
-      expect(positionAt(2_000, 2, seed) - positionAt(2_000, 1, seed)).toBeGreaterThan(0.15);
+      expect(completionTime(2, seed)).toBeLessThan(completionTime(1, seed) * 0.8);
     }
   });
 

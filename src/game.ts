@@ -8,22 +8,96 @@ export const OUT_START = 0.84;
 
 const ROUND_DURATIONS = [4_200, 2_800, 2_400, 2_100, 1_800] as const;
 const ROUND_CUES = [
-  "まずは一定スピード",
+  "まずは動きのクセを見切れ",
   "ここから一気に1.5倍！",
   "後半ほど速くなる",
   "速度の波を見切れ",
   "緩急MAX、最後の一発！",
 ] as const;
-const ROUND_PATTERN_INTENSITY = [0.25, 0.35, 0.65, 0.85, 1] as const;
+const ROUND_PATTERN_INTENSITY = [0.85, 0.9, 0.95, 1, 1] as const;
 const PATTERN_STEPS = [7, 9, 11, 13, 17, 19, 21, 23, 27, 29] as const;
+const MAX_NORMALIZED_SPEED = 1.55;
+const PATTERN_FAMILIES = [
+  { name: "さざ波", speeds: [0.66, 1.34, 0.78, 1.22, 0.72, 1.28, 0.84, 1.16, 0.7, 1.3] },
+  { name: "じわ加速", speeds: [0.26, 0.38, 0.52, 0.7, 0.9, 1.1, 1.32, 1.56, 1.82, 2.08] },
+  { name: "急ブレーキ", speeds: [2.08, 1.82, 1.56, 1.32, 1.1, 0.9, 0.7, 0.52, 0.38, 0.26] },
+  { name: "ストップ＆ゴー", speeds: [1.55, 0.12, 1.45, 0.15, 1.65, 0.1, 1.5, 0.14, 1.7, 0.18] },
+  { name: "ダッシュ連打", speeds: [0.25, 2.2, 0.45, 1.9, 0.2, 2.35, 0.55, 1.75, 0.3, 2.1] },
+  { name: "階段加速", speeds: [0.4, 0.4, 0.7, 0.7, 1, 1, 1.3, 1.3, 1.65, 1.65] },
+  { name: "ためてダッシュ", speeds: [1.1, 0.8, 0.5, 0.12, 0.12, 2.2, 1.9, 1.4, 1, 0.8] },
+  { name: "フェイント", speeds: [1.25, 1.05, 1.35, 0.15, 2, 1, 0.12, 1.8, 0.6, 1.4] },
+  { name: "パルス", speeds: [1, 0.2, 1.7, 0.25, 1.4, 0.16, 1.9, 0.3, 1.55, 0.2] },
+  { name: "カオス", speeds: [0.15, 2.2, 0.35, 1.6, 0.12, 1.9, 0.55, 1.25, 0.2, 1.75] },
+] as const;
+const SEGMENT_DURATION_SHAPE = [0.72, 1.28, 0.86, 1.16, 0.76, 1.32, 0.9, 1.12, 0.8, 1.08] as const;
+const PHASED_FAMILIES = new Set([0, 3, 4, 6, 7, 8, 9]);
+
+function patternSpeeds(family: number, variant: number): readonly number[] {
+  const source = PATTERN_FAMILIES[family].speeds;
+  const phase = (variant * 3 + family * 2) % source.length;
+  const shaped = PHASED_FAMILIES.has(family)
+    ? source.map((_, index) => source[(index + phase) % source.length])
+    : source;
+  const strength = PHASED_FAMILIES.has(family) ? 0.86 + variant * 0.045 : 0.68 + variant * 0.12;
+
+  return Object.freeze(shaped.map((speed, index) => {
+    const offset = (((variant + 1) * 31 + (index + 1) * 17 + family * 13) % 9) - 4;
+    const emphasized = 1 + (speed - 1) * strength;
+    return Math.max(0.08, emphasized * (1 + offset * 0.012));
+  }));
+}
+
+function patternDurations(variant: number): readonly number[] {
+  const phase = (variant * 3) % SEGMENT_DURATION_SHAPE.length;
+  const amplitude = 0.72 + (variant % 5) * 0.16;
+  const source = variant >= 5 ? [...SEGMENT_DURATION_SHAPE].reverse() : SEGMENT_DURATION_SHAPE;
+  return Object.freeze(
+    source.map((_, index) => {
+      const duration = source[(index + phase) % source.length];
+      return 1 + (duration - 1) * amplitude;
+    }),
+  );
+}
 
 export const MOVEMENT_PATTERNS = Object.freeze(
   Array.from({ length: MOVEMENT_PATTERN_COUNT }, (_, id) => ({
     id,
-    family: id % 5,
-    variant: Math.floor(id / 5),
+    family: id % PATTERN_FAMILIES.length,
+    variant: Math.floor(id / PATTERN_FAMILIES.length),
+    name: PATTERN_FAMILIES[id % PATTERN_FAMILIES.length].name,
     durationScale: 0.96 + ((id * 7) % 9) * 0.01,
+    speeds: patternSpeeds(id % PATTERN_FAMILIES.length, Math.floor(id / PATTERN_FAMILIES.length)),
+    durations: patternDurations(Math.floor(id / PATTERN_FAMILIES.length)),
   })),
+);
+
+function normalizedSpeeds(patternIndex: number, round: number): readonly number[] {
+  const { speeds, durations } = MOVEMENT_PATTERNS[patternIndex];
+  const intensity = ROUND_PATTERN_INTENSITY[round - 1];
+  let effectiveSpeeds = speeds.map((speed) => 1 + (speed - 1) * intensity);
+  const totalDuration = durations.reduce((total, duration) => total + duration, 0);
+
+  for (let iteration = 0; iteration < 16; iteration += 1) {
+    const average = effectiveSpeeds.reduce(
+      (total, speed, index) => total + speed * durations[index],
+      0,
+    ) / totalDuration;
+    const limit = average * MAX_NORMALIZED_SPEED;
+    effectiveSpeeds = effectiveSpeeds.map((speed) => Math.min(speed, limit));
+  }
+
+  const finalAverage = effectiveSpeeds.reduce(
+    (total, speed, index) => total + speed * durations[index],
+    0,
+  ) / totalDuration;
+  return Object.freeze(effectiveSpeeds.map((speed) => speed / finalAverage));
+}
+
+const NORMALIZED_PATTERN_SPEEDS = Object.freeze(
+  MOVEMENT_PATTERNS.map((_, patternIndex) =>
+    Object.freeze(
+      ROUND_PATTERN_INTENSITY.map((_, roundIndex) => normalizedSpeeds(patternIndex, roundIndex + 1)),
+    )),
 );
 
 export function createInitialState(): GameState {
@@ -80,65 +154,30 @@ export function movementPatternIndex(seed: number, round: number): number {
   return (start + (safeRound - 1) * step) % MOVEMENT_PATTERN_COUNT;
 }
 
-function multiSpeedProgress(progress: number, variant: number): number {
-  const firstBreak = 0.3;
-  const secondBreak = 0.68;
-  const firstSpeed = 0.68 + (variant % 4) * 0.12;
-  const middleSpeed = 0.65 + (Math.floor(variant / 4) % 5) * 0.12;
-  const finalSpeed = 0.76 + ((variant * 7) % 6) * 0.09;
-  const firstDistance = firstBreak * firstSpeed;
-  const middleDistance = (secondBreak - firstBreak) * middleSpeed;
-  const totalDistance = firstDistance + middleDistance + (1 - secondBreak) * finalSpeed;
-
-  if (progress < firstBreak) return (progress * firstSpeed) / totalDistance;
-  if (progress < secondBreak) {
-    return (firstDistance + (progress - firstBreak) * middleSpeed) / totalDistance;
-  }
-  return (firstDistance + middleDistance + (progress - secondBreak) * finalSpeed) / totalDistance;
-}
-
 export function movementPatternProgress(progress: number, patternIndex: number, round: number): number {
   const value = Math.min(1, Math.max(0, progress));
+  if (value === 0 || value === 1) return value;
   const safePatternIndex = ((Math.round(patternIndex) % MOVEMENT_PATTERN_COUNT) + MOVEMENT_PATTERN_COUNT) % MOVEMENT_PATTERN_COUNT;
   const safeRound = Math.min(TOTAL_ROUNDS, Math.max(1, Math.round(round)));
-  const { family, variant } = MOVEMENT_PATTERNS[safePatternIndex];
-  const intensity = ROUND_PATTERN_INTENSITY[safeRound - 1];
-  let position: number;
+  const { durations } = MOVEMENT_PATTERNS[safePatternIndex];
+  const speeds = NORMALIZED_PATTERN_SPEEDS[safePatternIndex][safeRound - 1];
+  const totalDuration = durations.reduce((total, duration) => total + duration, 0);
+  const elapsedDuration = value * totalDuration;
+  let coveredDuration = 0;
+  let coveredDistance = 0;
 
-  switch (family) {
-    case 0: {
-      const frequency = 1 + (variant % 4);
-      const phase = ((variant * 0.61803398875) % 1) * Math.PI * 2;
-      const amplitude = (0.12 + (variant % 5) * 0.025) * intensity;
-      position = value + (amplitude * (Math.cos(phase) - Math.cos(Math.PI * 2 * frequency * value + phase))) / (Math.PI * 2 * frequency);
-      break;
-    }
-    case 1: {
-      const exponent = 1 + (0.1 + variant * 0.009) * intensity;
-      position = value ** exponent;
-      break;
-    }
-    case 2: {
-      const exponent = 1 + (0.1 + variant * 0.009) * intensity;
-      position = 1 - (1 - value) ** exponent;
-      break;
-    }
-    case 3: {
-      const direction = variant % 2 === 0 ? 1 : -1;
-      const amplitude = (0.07 + variant * 0.004) * intensity;
-      position = value + direction * amplitude * Math.sin(Math.PI * value);
-      break;
-    }
-    case 4: {
-      const stepped = multiSpeedProgress(value, variant);
-      position = value + (stepped - value) * intensity;
-      break;
-    }
-    default:
-      position = value;
+  for (let index = 0; index < speeds.length; index += 1) {
+    const segmentEnd = coveredDuration + durations[index];
+    const activeDuration = Math.min(
+      durations[index],
+      Math.max(0, elapsedDuration - coveredDuration),
+    );
+    coveredDistance += speeds[index] * activeDuration;
+    coveredDuration = segmentEnd;
+    if (elapsedDuration <= segmentEnd) break;
   }
 
-  return Math.min(1, Math.max(0, position));
+  return Math.min(1, Math.max(0, coveredDistance / totalDuration));
 }
 
 export function positionAt(elapsedMs: number, round: number, seed = 1): number {
