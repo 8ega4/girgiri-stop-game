@@ -1,5 +1,6 @@
 import "./style.css";
 import { track } from "./analytics";
+import { GameAudio, type BgmScene, type SoundEffect } from "./audio";
 import { iconMarkup } from "./icons";
 import {
   createInitialState,
@@ -37,12 +38,12 @@ const DEFAULT_STATS: StoredStats = {
 
 const state = createInitialState();
 let stats = loadStats();
+const gameAudio = new GameAudio(stats.soundEnabled);
 let frameId = 0;
 let roundStartTime = 0;
 let pausedAt = 0;
 let introTimer = 0;
 let resultTimer = 0;
-let audioContext: AudioContext | null = null;
 
 function loadStats(): StoredStats {
   try {
@@ -69,12 +70,27 @@ function setScreen(screen: GameScreen): void {
   state.screen = screen;
   document.body.dataset.screen = screen;
   document.body.dataset.mode = state.mode;
+  syncBgmToScreen();
+}
+
+function syncBgmToScreen(): void {
+  let scene: BgmScene | null = null;
+  if (state.screen === "roundIntro" || state.screen === "playing") scene = "play";
+  else if (state.screen === "finalResult") scene = "result";
+  gameAudio.setScene(scene, state.currentRound);
+  document.body.dataset.bgm = stats.soundEnabled ? scene ?? "ready" : "off";
+  updateAudioDataset();
+}
+
+function updateAudioDataset(): void {
+  document.body.dataset.audio = gameAudio.contextState;
+  document.body.dataset.bgmActive = String(gameAudio.isBgmActive);
 }
 
 function shell(content: string, extraClass = ""): string {
   return `
     <main class="game-shell ${extraClass}">
-      <button class="sound-toggle" type="button" data-action="sound" aria-label="音を${stats.soundEnabled ? "オフ" : "オン"}にする" aria-pressed="${stats.soundEnabled}">
+      <button class="sound-toggle" type="button" data-action="sound" title="BGM・効果音 ${stats.soundEnabled ? "ON" : "OFF"}" aria-label="BGMと効果音を${stats.soundEnabled ? "オフ" : "オン"}にする" aria-pressed="${stats.soundEnabled}">
         ${iconMarkup(stats.soundEnabled ? "volume" : "volumeOff", "sound-toggle__icon")}
       </button>
       ${content}
@@ -424,37 +440,11 @@ function vibrate(score: number): void {
 }
 
 function unlockAudio(): void {
-  if (!stats.soundEnabled) return;
-  try {
-    audioContext ??= new AudioContext();
-    if (audioContext.state === "suspended") void audioContext.resume();
-  } catch {
-    audioContext = null;
-  }
+  void gameAudio.unlock().then(updateAudioDataset);
 }
 
-function playSound(type: "start" | "stop" | "high" | "fail" | "complete"): void {
-  if (!stats.soundEnabled || !audioContext) return;
-  const frequencies: Record<typeof type, number[]> = {
-    start: [440, 660],
-    stop: [280],
-    high: [660, 880, 1_080],
-    fail: [180, 120],
-    complete: [440, 660, 880, 1_120],
-  };
-  const start = audioContext.currentTime;
-  frequencies[type].forEach((frequency, index) => {
-    const oscillator = audioContext!.createOscillator();
-    const gain = audioContext!.createGain();
-    oscillator.type = type === "fail" ? "sawtooth" : "sine";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, start + index * 0.09);
-    gain.gain.exponentialRampToValueAtTime(0.13, start + index * 0.09 + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.09 + 0.12);
-    oscillator.connect(gain).connect(audioContext!.destination);
-    oscillator.start(start + index * 0.09);
-    oscillator.stop(start + index * 0.09 + 0.14);
-  });
+function playSound(type: SoundEffect): void {
+  gameAudio.playEffect(type);
 }
 
 function showToast(message: string): void {
@@ -468,11 +458,15 @@ function showToast(message: string): void {
 function toggleSound(): void {
   stats.soundEnabled = !stats.soundEnabled;
   saveStats();
+  gameAudio.setEnabled(stats.soundEnabled);
+  syncBgmToScreen();
   if (stats.soundEnabled) {
     unlockAudio();
     playSound("start");
   }
   render();
+  showToast(`BGM・効果音 ${stats.soundEnabled ? "ON" : "OFF"}`);
+  track("sound_toggle", { enabled: stats.soundEnabled });
 }
 
 async function handleShare(action: string): Promise<void> {
@@ -534,6 +528,8 @@ window.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("visibilitychange", () => {
+  gameAudio.setPageVisible(!document.hidden);
+  updateAudioDataset();
   if (state.screen !== "playing" || state.inputLocked) return;
   if (document.hidden) {
     pausedAt = performance.now();
