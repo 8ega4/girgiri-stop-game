@@ -770,7 +770,7 @@ body[data-screen="roundResult"] { overflow: hidden; overscroll-behavior: none; }
 
 .game-shell--result { min-height: 100dvh; }
 .screen--result { padding-bottom: max(28px, env(safe-area-inset-bottom)); }
-.screen--result .game-title--compact { margin-right: 44px; text-align: center; }
+.screen--result .game-title--compact { margin: 2px 44px 3px; text-align: center; }
 .result-heading:focus { outline: none; }
 
 .result-heading {
